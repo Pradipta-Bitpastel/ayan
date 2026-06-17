@@ -1,60 +1,61 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gsap, useGSAP, registerGsap } from "@/lib/gsap";
+import { gsap, registerGsap } from "@/lib/gsap";
 import { stage, damp } from "@/lib/stage";
 
 const TAGLINE = ["Where", "light", "holds", "still."];
 
 /**
  * The hero's editorial layer, layered OVER the WebGL particle name. A framing HUD
- * in the corners, a mono kicker above the name and a tagline below it that reveals
- * word-by-word once the loader hands off. Everything leans toward the cursor on a
- * gentle multi-rate parallax (kicker, tagline and HUD drift by different amounts,
- * so the hero has real depth) and the whole layer dissolves as you scroll past it.
+ * in the corners, a mono kicker above the name and a tagline below it. The reveal
+ * is keyed to the focus-rack (it plays AS the world pulls into focus, so it reads
+ * as one continuous shot rather than a separate beat that pops in late), and stays
+ * subtle: the tagline rises behind a mask, the kicker + HUD simply fade up — no
+ * reflow-heavy letter-spacing tween. Everything leans toward the cursor on a gentle
+ * multi-rate parallax and the whole layer dissolves as you scroll past it.
  */
-export default function HeroOverlay({ ready }: { ready: boolean }) {
+export default function HeroOverlay() {
   const root = useRef<HTMLDivElement>(null);
   const kicker = useRef<HTMLParagraphElement>(null);
   const tagWrap = useRef<HTMLDivElement>(null);
   const tag = useRef<HTMLHeadingElement>(null);
   const hud = useRef<HTMLDivElement>(null);
 
-  // Intro once the loader is done — plays as the name racks into focus.
-  useGSAP(
-    () => {
-      if (!ready) return;
-      registerGsap();
-      gsap.set(root.current, { autoAlpha: 1 });
-
-      // Manual word reveal: each word keeps its own gradient (background-clip:text
-      // breaks if the glyphs are moved into wrapper nodes, as SplitText does).
-      const words = tag.current?.querySelectorAll(".tag-word") ?? [];
-      const tl = gsap.timeline({ delay: 0.15 });
-      if (words.length) {
-        gsap.set(words, { yPercent: 118 });
-        tl.to(words, { yPercent: 0, duration: 1.1, ease: "rack", stagger: 0.09 }, 0);
-      }
-      tl.fromTo(
-        kicker.current,
-        { autoAlpha: 0, y: 14, letterSpacing: "0.5em" },
-        { autoAlpha: 1, y: 0, letterSpacing: "0.22em", duration: 1.2, ease: "rack" },
-        0.1
-      ).fromTo(
-        hud.current ? hud.current.children : [],
-        { autoAlpha: 0, y: -10 },
-        { autoAlpha: 1, y: 0, duration: 1.0, ease: "rack", stagger: 0.12 },
-        0.2
-      );
-    },
-    { dependencies: [ready], scope: root }
-  );
-
-  // Per-frame: multi-rate cursor parallax + dissolve on scroll.
   useEffect(() => {
+    registerGsap();
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const words = tag.current?.querySelectorAll<HTMLElement>(".tag-word") ?? [];
+    const hudKids = hud.current ? Array.from(hud.current.children) : [];
+
+    // hidden initial state (the kicker's transform is owned by the parallax loop
+    // below, so it only ever fades — never a transform tween that would be stomped)
+    gsap.set(words, { yPercent: 116 });
+    gsap.set([kicker.current, ...hudKids], { autoAlpha: 0 });
+    gsap.set(hudKids, { y: -8 });
+
+    let played = false;
+    let intro: gsap.core.Timeline | null = null;
+    const play = () => {
+      if (played) return;
+      played = true;
+      if (reduced) {
+        gsap.set(words, { yPercent: 0 });
+        gsap.set([kicker.current, ...hudKids], { autoAlpha: 1, y: 0 });
+        return;
+      }
+      intro = gsap.timeline();
+      intro
+        .to(words, { yPercent: 0, duration: 0.9, ease: "rack", stagger: 0.08 }, 0)
+        .to(kicker.current, { autoAlpha: 1, duration: 0.8, ease: "power2.out" }, 0.05)
+        .to(hudKids, { autoAlpha: 1, y: 0, duration: 0.7, ease: "rack", stagger: 0.08 }, 0.12);
+    };
+
     let raf = 0;
     let kx = 0, ky = 0, tx = 0, ty = 0, hx = 0;
     const tick = () => {
+      // reveal in lock-step with the rack pulling the hero into focus
+      if (!played && (stage.focus < 0.55 || stage.ready)) play();
       const heroAmt = Math.max(0, Math.min(1, 1 - stage.progress * 8));
       const px = stage.pointer.x;
       const py = stage.pointer.y;
@@ -73,7 +74,10 @@ export default function HeroOverlay({ ready }: { ready: boolean }) {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      intro?.kill();
+    };
   }, []);
 
   return (

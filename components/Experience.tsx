@@ -43,7 +43,7 @@ export default function Experience() {
       <NameLayer />
 
       {/* Hero editorial layer — kicker, animated tagline, framing HUD, parallax */}
-      <HeroOverlay ready={ready} />
+      <HeroOverlay />
 
       {/* The single pinned section + all scenes */}
       <main>

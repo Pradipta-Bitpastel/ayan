@@ -35,8 +35,6 @@ export default function PortraitCharacter() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/ayan.png" alt="Ayan Hore" className="portrait-img" />
         <span className="portrait-grain" />
-        {/* soft edge fades so he melts into the scene, never a hard rectangle */}
-        <span className="portrait-vignette" />
       </div>
     </div>
   );

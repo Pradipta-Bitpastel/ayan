@@ -287,10 +287,11 @@ a {
   max-width: none;
   object-fit: contain;
   object-position: bottom right;
-  /* dissolve the hard chest crop into the scene — the left seam is handled by the
-     container mask above. */
-  -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 14%, #000 100%);
-  mask-image: linear-gradient(to top, transparent 0%, #000 14%, #000 100%);
+  /* ayan.png is a clean transparent cutout, so the only crop to hide is the
+     bottom chest edge — fade just that. The head/sides are already transparent
+     and blend naturally; no top fade (it would eat his hair). */
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 16%, #000 100%);
+  mask-image: linear-gradient(to top, transparent 0%, #000 16%, #000 100%);
 }
 /* faint film grain over the figure for the darkroom feel */
 .portrait-grain {
@@ -299,13 +300,6 @@ a {
   pointer-events: none;
   opacity: 0.06;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-/* subtle grounding vignette on the figure's outer edge */
-.portrait-vignette {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(70% 80% at 75% 45%, transparent 55%, rgba(7, 7, 10, 0.5) 100%);
 }
 @media (max-width: 1023px) {
   .portrait-layer { width: 78vw; opacity: 0; }

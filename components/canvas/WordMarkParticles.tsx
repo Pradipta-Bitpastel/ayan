@@ -30,6 +30,7 @@ const vert = /* glsl */ `
   uniform vec2  uMouse;
   varying float vA;
   varying float vT;
+  varying float vGlow;
 
   void main() {
     // staggered assemble: each mote eases home on its own slightly delayed beat
@@ -43,21 +44,23 @@ const vert = /* glsl */ `
     pos.y += cos(uTime * 0.7 + aPhase * 24.0) * fl;
     pos.z += sin(uTime * 0.5 + aPhase * 18.0) * fl;
 
-    // cursor repel — motes flee the pointer, then settle back. uActive gates it
-    // off until the user actually moves (otherwise the default 0,0 cursor sits on
-    // the wordmark's centre and blows the middle letters apart).
+    // cursor LIGHT — motes near the pointer brighten, swell and lift a touch
+    // toward the viewer, as if a light is passing over them. The name keeps its
+    // shape (no destructive repel). uActive gates it off until the user moves.
     vec2 toM = pos.xy - uMouse;
     float dist = length(toM);
-    float push = smoothstep(0.9, 0.0, dist) * 0.6 * d * uActive;
-    pos.xy += normalize(toM + 1e-4) * push;
+    float glow = smoothstep(0.62, 0.0, dist) * d * uActive;
+    pos.z += glow * 0.28;                          // gentle lift toward camera
+    pos.xy += normalize(toM + 1e-4) * glow * 0.03; // barely-there shimmer
 
     // a slow shimmer sweeping left→right across the wordmark
     float sweep = 0.72 + 0.38 * sin(aHome.x * 1.15 - uTime * 1.5);
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = aSize * uSize / max(0.1, -mv.z) * (1.0 + push * 1.6);
+    gl_PointSize = aSize * uSize / max(0.1, -mv.z) * (1.0 + glow * 1.6);
     vA = uOpacity * (0.22 + 0.78 * d) * sweep;
+    vGlow = glow;
     vT = aPhase;
   }
 `;
@@ -68,13 +71,16 @@ const frag = /* glsl */ `
   uniform vec3 uColB;
   varying float vA;
   varying float vT;
+  varying float vGlow;
   void main() {
     vec2 c = gl_PointCoord - 0.5;
     float r = length(c);
     float a = smoothstep(0.5, 0.0, r);
     a *= a;
     vec3 col = mix(uColA, uColB, vT);
-    gl_FragColor = vec4(col, a * vA);
+    // the cursor light blooms the nearby motes toward bright ice-white
+    col += vGlow * vec3(0.55, 0.72, 0.9);
+    gl_FragColor = vec4(col, a * (vA + vGlow * 0.45));
   }
 `;
 

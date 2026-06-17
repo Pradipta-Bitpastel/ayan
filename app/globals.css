@@ -1,0 +1,493 @@
+@import "tailwindcss";
+
+/* Fontshare fonts (Clash Display + General Sans) are loaded via <link> in
+   app/layout.tsx — Tailwind v4 inlines its own @import, which would push a CSS
+   @import past the "imports first" rule and fail to parse. */
+
+/* ──────────────────────────────────────────────────────────────────────
+   Darkroom design tokens
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --ink-900: #0a0a0d; /* base background — darkroom black */
+  --ink-800: #121217; /* raised surfaces */
+  --ink-700: #1c1c24; /* hairlines, borders */
+  --paper: #ece9e1;   /* primary text — warm photo-paper white */
+  --paper-dim: #c2bdb0; /* captions, muted labels — brightened for contrast */
+  --brass: #c9a24b;   /* SIGNATURE accent — brass / AFIP gold */
+  --brass-hi: #e8c77a; /* accent highlight / focus glow */
+  --slate: #5c7a99;   /* cool focus side — used sparingly */
+
+  --ease-rack: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-ink-900: var(--ink-900);
+  --color-ink-800: var(--ink-800);
+  --color-ink-700: var(--ink-700);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-brass: var(--brass);
+  --color-brass-hi: var(--brass-hi);
+  --color-slate: var(--slate);
+
+  --font-display: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Satoshi", "General Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink-900);
+  /* let Lenis own the scroll; native smooth off */
+  scroll-behavior: auto;
+}
+
+body {
+  background: var(--ink-900);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Hide the native cursor only when our custom aperture cursor is active
+   (fine pointers); coarse/touch keep the native one. */
+@media (pointer: fine) {
+  body.has-aperture,
+  body.has-aperture a,
+  body.has-aperture button {
+    cursor: none;
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brass) 35%, transparent);
+  color: var(--paper);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Type scale (fluid) ────────────────────────────────────────────────── */
+.t-display-xl {
+  font-family: var(--font-display);
+  font-weight: 600;
+  /* sized to fit the ~54vw text column (the right 46vw is the portrait reserve),
+     so a long company name like "Bitpastel®" never clips its last glyph */
+  font-size: clamp(3rem, 7.5vw, 8rem);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.t-display-l {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+}
+.t-heading {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.t-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: clamp(1rem, 1.1vw, 1.125rem);
+  line-height: 1.6;
+}
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Film grain overlay (purely decorative, fixed, pointer-none) ───────── */
+/* Static film grain. No blend-mode + no transform animation: both forced a
+   full-viewport recomposite every frame over the live canvas (jank/flicker).
+   A faint static overlay reads as film without costing anything per frame. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Soft brass focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* SplitText: keep mask reveals clean */
+.split-line {
+  will-change: transform, opacity, filter;
+}
+
+/* ── The pinned stage + scenes (full-bleed, no horizontal padding) ─────── */
+.stage-frame {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+.scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+#scene-hero { opacity: 1; } /* first scene visible before JS runs */
+
+/* Edge-aligned content — sections bleed to the viewport edges. A single
+   safe-gutter variable keeps text just off the literal edge without ever
+   reintroducing big horizontal padding. */
+.scene-inner {
+  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+/* Legibility scrim: a soft dark gradient on the text side (left) so copy always
+   reads cleanly over the moving WebGL, fading to clear on the right where the 3D
+   lives. Hero is centred and skips it. */
+.scene-inner:not(.hero-inner)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(7, 7, 10, 0.92) 0%,
+    rgba(7, 7, 10, 0.78) 26%,
+    rgba(7, 7, 10, 0.4) 50%,
+    rgba(7, 7, 10, 0.1) 70%,
+    transparent 84%
+  );
+}
+.scene-inner > * { position: relative; z-index: 1; }
+
+/* Reserve the right half for Ayan (the portrait) on desktop, so copy stays in
+   the left column and never collides with the figure. */
+.stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) {
+  padding-right: 46vw;
+}
+
+/* Mobile / reduced-motion fallback: scenes flow vertically, no pin. */
+.stage-frame.is-flow {
+  height: auto;
+  overflow: visible;
+}
+.stage-frame.is-flow .scene {
+  position: relative;
+  inset: auto;
+  min-height: 100vh;
+  min-height: 100svh;
+  opacity: 1;
+}
+
+/* ── Animated gradient text (premium, soothing flow) ───────────────────── */
+.grad-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--paper) 0%,
+    var(--brass-hi) 26%,
+    var(--paper) 50%,
+    var(--brass) 74%,
+    var(--paper) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: grad-flow 9s linear infinite;
+}
+@keyframes grad-flow {
+  to { background-position: -250% 0; }
+}
+
+/* Reveal container — text now emerges from fog (blur), so no clipping needed. */
+.reveal-wrap {
+  display: block;
+  padding-bottom: 0.08em;
+}
+
+/* The name: a continuously sweeping linear-gradient sheen. */
+.grad-name {
+  background-image: linear-gradient(
+    105deg,
+    #ece9e1 0%,
+    #ffffff 18%,
+    #e8c77a 38%,
+    #ffffff 52%,
+    #c9a24b 70%,
+    #ece9e1 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: grad-flow 6s linear infinite;
+}
+
+/* ── Ayan — the main character (DOM image layer) ───────────────────────── */
+.portrait-layer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  height: 100vh;
+  height: 100svh;
+  width: min(52vw, 760px);
+  pointer-events: none;
+  opacity: 0; /* Stage reveals it */
+  transform-origin: bottom right;
+  will-change: transform, opacity, filter;
+  /* Fade the LEFT edge of the whole layer so the figure melts into the scene —
+     this kills the hard vertical seam at the container's overflow-clip edge
+     (masking the image itself can't, since its left is clipped off-container). */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 38%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 38%, #000 100%);
+}
+.portrait-inner { position: absolute; inset: 0; overflow: hidden; }
+.portrait-img {
+  position: absolute;
+  right: -4%;
+  bottom: -7%;
+  height: 112%;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: bottom right;
+  /* dissolve the hard chest crop into the scene — the left seam is handled by the
+     container mask above. */
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 14%, #000 100%);
+  mask-image: linear-gradient(to top, transparent 0%, #000 14%, #000 100%);
+}
+/* faint film grain over the figure for the darkroom feel */
+.portrait-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* subtle grounding vignette on the figure's outer edge */
+.portrait-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(70% 80% at 75% 45%, transparent 55%, rgba(7, 7, 10, 0.5) 100%);
+}
+@media (max-width: 1023px) {
+  .portrait-layer { width: 78vw; opacity: 0; }
+  .portrait-img { right: -10%; }
+}
+
+/* ── Graded photo frames (parallax-safe: image overscanned, never crops) ─── */
+.photo-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ink-800);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 60px -24px rgba(0, 0, 0, 0.8);
+  will-change: transform;
+}
+.photo-frame-img {
+  position: absolute;
+  top: -9%;
+  left: -9%;
+  width: 118%;
+  height: 118%;
+  object-fit: cover;
+  /* darkroom base grade: cooled, contrasted, slightly dimmed */
+  filter: grayscale(0.45) contrast(1.12) brightness(0.8) saturate(0.8);
+  will-change: transform;
+}
+/* duotone wash — teal in the shadows, brass in the highlights — over every photo
+   so a mixed set of sources reads as one cohesive, on-theme body of work */
+.photo-frame-grade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--slate) 42%, transparent), transparent 55%),
+    linear-gradient(330deg, color-mix(in srgb, var(--brass) 30%, transparent), transparent 60%);
+  mix-blend-mode: overlay;
+}
+.photo-frame-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* inner vignette + hairline so the photo seats into the darkroom, never a flat rectangle */
+.photo-frame-edge {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--brass) 22%, transparent);
+  border-radius: 3px;
+  box-shadow: inset 0 0 60px 8px rgba(6, 8, 12, 0.55);
+}
+
+/* The Photography triptych — a staggered filmstrip across the frame */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.75rem, 1.6vw, 1.4rem);
+  width: 100%;
+  max-width: 1180px;
+}
+.gallery .photo-frame { aspect-ratio: 4 / 5; }
+/* stagger via margin (not transform) so the GSAP reveal transform doesn't wipe it */
+.gallery .g-2 { margin-top: clamp(1.25rem, 4vh, 3rem); }
+.gallery .g-3 { margin-top: clamp(2.25rem, 7vh, 5rem); }
+
+/* photography scene gives the frame back to the gallery (no portrait reserve) */
+.stage-frame:not(.is-flow) .scene-inner.gallery-scene { padding-right: var(--gutter); }
+.gallery-scene { justify-content: center; }
+.gallery-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1180px;
+  flex-wrap: wrap;
+}
+.gallery-meta { display: flex; align-items: center; gap: 1.5rem; }
+
+@media (max-width: 1023px) {
+  .gallery { max-width: 100%; grid-template-columns: 1fr 1fr; }
+  .gallery .g-3 { grid-column: span 2; aspect-ratio: 16 / 10; }
+  .gallery .g-2, .gallery .g-3 { margin-top: 0; }
+}
+
+/* ── Animated underline for links ──────────────────────────────────────── */
+.link-draw {
+  position: relative;
+  width: fit-content;
+}
+.link-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 100%;
+  height: 1px;
+  background: var(--brass);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease-rack);
+}
+.link-draw:hover::after { transform: scaleX(1); }
+
+/* ── Connect — editorial contact list ──────────────────────────────────── */
+.connect-list {
+  list-style: none;
+  width: 100%;
+  max-width: 640px;
+  border-top: 1px solid var(--ink-700);
+}
+.connect-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto 1.5rem;
+  align-items: baseline;
+  gap: clamp(0.75rem, 1.6vw, 1.5rem);
+  padding: clamp(0.85rem, 1.5vw, 1.15rem) 0.5rem;
+  border-bottom: 1px solid var(--ink-700);
+  overflow: hidden;
+  transition: padding-left 0.55s var(--ease-rack);
+}
+/* a soft brass wipe sweeps in behind the row on hover */
+.connect-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brass) 14%, transparent),
+    transparent 62%
+  );
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.6s var(--ease-rack);
+}
+.connect-row > * { position: relative; z-index: 1; }
+.connect-row:hover { padding-left: 1.1rem; }
+.connect-row:hover::before { transform: scaleX(1); }
+.connect-idx {
+  color: var(--brass);
+  opacity: 0.65;
+}
+.connect-label {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.25rem, 2.2vw, 1.9rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+  transition: color 0.4s var(--ease-rack);
+}
+.connect-handle {
+  color: var(--paper-dim);
+  white-space: nowrap;
+  transition: color 0.4s var(--ease-rack);
+}
+.connect-arrow {
+  justify-self: end;
+  color: var(--brass);
+  font-size: 1.1rem;
+  transform: translateX(-8px);
+  opacity: 0;
+  transition: transform 0.5s var(--ease-rack), opacity 0.4s var(--ease-rack);
+}
+.connect-row:hover .connect-label { color: var(--brass-hi); }
+.connect-row:hover .connect-handle { color: var(--paper); }
+.connect-row:hover .connect-arrow { transform: translateX(0); opacity: 1; }
+.connect-foot { margin-top: clamp(1.75rem, 4vh, 2.75rem); color: var(--paper-dim); }
+@media (max-width: 560px) {
+  .connect-row { grid-template-columns: 1.75rem minmax(0, 1fr) 1.25rem; }
+  .connect-handle { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain { animation: none; }
+  .scene { opacity: 1 !important; }
+  .grad-text,
+  .grad-name { animation: none; }
+}

@@ -1,0 +1,16 @@
+import puppeteer from "puppeteer-core";
+const CHROME="/Users/pradiptajana/.cache/puppeteer/chrome/mac_arm-149.0.7827.22/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const b=await puppeteer.launch({executablePath:CHROME,headless:"new",args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"],defaultViewport:{width:1440,height:900}});
+const p=await b.newPage();
+const errs=[];
+p.on("pageerror",e=>errs.push("PE:"+e.message.slice(0,160)));
+p.on("console",m=>{if(m.type()==="error"&&!m.text().includes("hydrat"))errs.push("CE:"+m.text().slice(0,160));});
+const sp=[];
+p.on("request",r=>{if(r.url().includes("spline"))sp.push(r.url().slice(0,80));});
+await p.goto("http://localhost:3000/",{waitUntil:"domcontentloaded",timeout:30000});
+await new Promise(r=>setTimeout(r,12000));
+const info=await p.evaluate(()=>({c:document.querySelectorAll('canvas').length,max:document.body.scrollHeight-window.innerHeight}));
+console.log("canvases:",info.c,"| maxScroll:",info.max);
+console.log("spline requests:",sp.length);
+console.log("ERRS:",errs.slice(0,5).join(" || ")||"none");
+await b.close();

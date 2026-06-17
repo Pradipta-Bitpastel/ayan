@@ -1,0 +1,15 @@
+import puppeteer from "puppeteer-core";
+const CHROME="/Users/pradiptajana/.cache/puppeteer/chrome/mac_arm-149.0.7827.22/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const b=await puppeteer.launch({executablePath:CHROME,headless:"new",args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"],defaultViewport:{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true}});
+const p=await b.newPage();
+const errs=[];p.on("pageerror",e=>errs.push(e.message));
+await p.goto("http://localhost:3000/",{waitUntil:"domcontentloaded",timeout:30000});
+await new Promise(r=>setTimeout(r,4500));
+await p.screenshot({path:"scripts/m-hero.png"});
+const max=await p.evaluate(()=>document.body.scrollHeight-window.innerHeight);
+await p.evaluate((y)=>window.scrollTo(0,y),max*0.45);
+await new Promise(r=>setTimeout(r,1200));
+await p.screenshot({path:"scripts/m-mid.png"});
+const info=await p.evaluate(()=>({flow:document.querySelector(".stage-frame")?.classList.contains("is-flow"),canvas:!!document.querySelector("canvas"),scrollH:document.body.scrollHeight}));
+console.log("FLOW(is-flow):",info.flow,"CANVAS:",info.canvas,"scrollH:",info.scrollH,"ERRORS:",errs.slice(0,3).join("|")||"none");
+await b.close();

@@ -1,0 +1,13 @@
+import puppeteer from "puppeteer-core";
+const CHROME="/Users/pradiptajana/.cache/puppeteer/chrome/mac_arm-149.0.7827.22/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const b=await puppeteer.launch({executablePath:CHROME,headless:"new",args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"],defaultViewport:{width:1440,height:900}});
+const p=await b.newPage();
+await p.goto("http://localhost:3000/",{waitUntil:"domcontentloaded",timeout:30000});
+await new Promise(r=>setTimeout(r,13000));
+await p.screenshot({path:"scripts/sp-hero.png"});
+const max=await p.evaluate(()=>document.body.scrollHeight-window.innerHeight);
+await p.evaluate((y)=>{const l=window.__lenis;if(l)l.scrollTo(y,{immediate:true});},max*0.38);
+await new Promise(r=>setTimeout(r,2500));
+await p.screenshot({path:"scripts/sp-content.png"});
+await b.close();
+console.log("shots saved");

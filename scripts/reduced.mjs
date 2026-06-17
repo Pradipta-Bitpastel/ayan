@@ -1,0 +1,12 @@
+import puppeteer from "puppeteer-core";
+const CHROME="/Users/pradiptajana/.cache/puppeteer/chrome/mac_arm-149.0.7827.22/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const b=await puppeteer.launch({executablePath:CHROME,headless:"new",args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"],defaultViewport:{width:1440,height:900}});
+const p=await b.newPage();
+await p.emulateMediaFeatures([{name:"prefers-reduced-motion",value:"reduce"}]);
+const errs=[];p.on("pageerror",e=>errs.push(e.message));
+await p.goto("http://localhost:3000/",{waitUntil:"domcontentloaded",timeout:30000});
+await new Promise(r=>setTimeout(r,4500));
+await p.screenshot({path:"scripts/r-hero.png"});
+const info=await p.evaluate(()=>({name:document.querySelector("#ayan-name h1")?.textContent,visibleScenes:[...document.querySelectorAll(".scene")].filter(s=>getComputedStyle(s).opacity!=="0").length,loaderGone:!document.querySelector(".bg-ink-900.z-50")}));
+console.log("NAME:",info.name,"| visibleScenes:",info.visibleScenes,"| ERRORS:",errs.slice(0,3).join("|")||"none");
+await b.close();

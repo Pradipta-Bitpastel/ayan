@@ -160,7 +160,9 @@ export default function NameLayer() {
           text-align: center;
           font-family: "Bricolage Grotesque", var(--font-display), sans-serif;
           font-weight: 800;
-          font-size: clamp(3.5rem, 13vw, 12rem);
+          /* lower floor so the nowrap "AYAN HORE" never clips its edges on a
+             ~320px phone, while the 12rem ceiling keeps it grand on desktop */
+          font-size: clamp(2.6rem, 12vw, 12rem);
           line-height: 0.9;
           letter-spacing: -0.04em;
         }

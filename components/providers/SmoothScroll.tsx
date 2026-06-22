@@ -5,6 +5,7 @@ import Lenis from "lenis";
 import { registerGsap, gsap, ScrollTrigger } from "@/lib/gsap";
 import { stage } from "@/lib/stage";
 import { useDevice } from "@/lib/useDevice";
+import { useTouchMotion } from "@/lib/useTouchMotion";
 
 /**
  * Lenis owns smooth scrolling; ScrollTrigger reads from it; the WebGL layer reads
@@ -42,12 +43,15 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     };
   }, [reducedMotion]);
 
+  // On coarse/touch pointers, the phone's tilt + a gentle auto-drift stand in for
+  // the missing cursor so the parallax effects stay alive (skipped if reduced).
+  useTouchMotion(!finePointer && !reducedMotion);
+
   // Feed the pointer into the shared stage for parallax + the cursor lens.
   useEffect(() => {
     if (!finePointer) {
+      // touch: useTouchMotion owns stage.pointer; just drop the custom cursor.
       document.body.classList.remove("has-aperture");
-      stage.pointer.x = 0;
-      stage.pointer.y = 0;
       return;
     }
     document.body.classList.add("has-aperture");

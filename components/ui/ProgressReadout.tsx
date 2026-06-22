@@ -41,7 +41,7 @@ export default function ProgressReadout() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-6 right-6 z-40 flex items-center gap-4">
+    <div className="pointer-events-none fixed bottom-4 left-4 right-4 z-40 flex items-center gap-3 sm:bottom-6 sm:left-6 sm:right-6 sm:gap-4">
       <div className="h-px flex-1 overflow-hidden bg-ink-700">
         <div
           ref={bar}
@@ -52,7 +52,8 @@ export default function ProgressReadout() {
       <span ref={label} className="t-mono whitespace-nowrap" style={{ color: "var(--paper-dim)" }}>
         Intro
       </span>
-      <span ref={status} className="t-mono whitespace-nowrap" style={{ color: "var(--brass)" }}>
+      {/* flavour status — dropped on narrow phones so the bar + scene label fit */}
+      <span ref={status} className="t-mono whitespace-nowrap hidden sm:inline" style={{ color: "var(--brass)" }}>
         f/1.4 · IN FOCUS
       </span>
     </div>

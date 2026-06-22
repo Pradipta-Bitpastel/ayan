@@ -191,12 +191,50 @@ a {
     transparent 84%
   );
 }
+/* Phones: the portrait fills the frame behind the copy, so swap the left→right
+   wash for a denser bottom-anchored scrim. The figure (bottom-anchored) shows
+   through as a faint ghost while the text stays fully readable on top. */
+/* On phones the copy sits over the portrait, so lift every line off the figure
+   with a soft shadow — keeps the cinematic overlap while guaranteeing legibility
+   (the gradient headings already read bright; this rescues the body + labels). */
+@media (max-width: 639px) {
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) p,
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) .connect-label,
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) .connect-handle,
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) .connect-idx {
+    text-shadow: 0 1px 10px rgba(5, 6, 9, 0.92), 0 0 2px rgba(5, 6, 9, 0.9);
+  }
+}
+@media (max-width: 639px) {
+  .scene-inner:not(.hero-inner)::before {
+    background: linear-gradient(
+      0deg,
+      rgba(7, 7, 10, 0.96) 0%,
+      rgba(7, 7, 10, 0.9) 45%,
+      rgba(7, 7, 10, 0.82) 72%,
+      rgba(7, 7, 10, 0.6) 100%
+    );
+  }
+}
 .scene-inner > * { position: relative; z-index: 1; }
 
-/* Reserve the right half for Ayan (the portrait) on desktop, so copy stays in
-   the left column and never collides with the figure. */
+/* Reserve space on the right for Ayan (the portrait) so copy stays in the left
+   column and never collides with the figure. The reserve shrinks with the
+   viewport; on phones the portrait becomes a full-bleed backdrop behind the copy
+   (kept legible by a stronger scrim below), so no horizontal reserve is needed. */
 .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) {
   padding-right: 46vw;
+}
+@media (max-width: 1023px) {
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) {
+    padding-right: 34vw;
+  }
+}
+@media (max-width: 639px) {
+  .stage-frame:not(.is-flow) .scene-inner:not(.hero-inner) {
+    padding-right: var(--gutter);
+    padding-bottom: 8vh;
+  }
 }
 
 /* Mobile / reduced-motion fallback: scenes flow vertically, no pin. */
@@ -301,9 +339,45 @@ a {
   opacity: 0.06;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-@media (max-width: 1023px) {
-  .portrait-layer { width: 78vw; opacity: 0; }
-  .portrait-img { right: -10%; }
+/* The source is a SQUARE (1200×1200), centred head-and-shoulders cutout — not a
+   tall full-body figure. On smaller frames the desktop's height-driven crop would
+   slice it to an off-centre sliver, so below 1024px we size it by WIDTH with
+   object-fit: contain to keep the whole figure framed. */
+
+/* Tablet: Ayan stays a framed presence anchored to the right (a "side view"),
+   shown whole within the reserved band. */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .portrait-layer { width: 56vw; }
+  .portrait-img {
+    right: 0;
+    left: auto;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: right bottom;
+  }
+}
+/* Phone: Ayan becomes a centred backdrop behind the copy — the full figure,
+   horizontally centred and grounded to the bottom. Both side edges are feathered
+   and he's dimmed so the scrim + text-shadow keep the copy legible over him. */
+@media (max-width: 639px) {
+  .portrait-layer {
+    width: 100vw;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  }
+  .portrait-img {
+    left: 50%;
+    right: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 112%;
+    height: auto;
+    object-fit: contain;
+    object-position: center bottom;
+    opacity: 0.6;
+  }
 }
 
 /* ── Graded photo frames (parallax-safe: image overscanned, never crops) ─── */

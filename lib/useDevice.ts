@@ -8,6 +8,10 @@ export type Device = {
   isMobile: boolean;
   webgl: boolean;
   tier: "high" | "mid" | "low";
+  /** False until the first client-side resolve runs. Lets consumers defer
+   *  expensive, mount-once work (the WebGL canvas) past the SSR defaults so it
+   *  doesn't mount at the default tier and immediately remount at the real one. */
+  resolved: boolean;
 };
 
 function detectWebgl(): boolean {
@@ -29,6 +33,7 @@ const DEFAULT: Device = {
   isMobile: false,
   webgl: true,
   tier: "high",
+  resolved: false,
 };
 
 /**
@@ -51,7 +56,7 @@ export function useDevice(): Device {
       if (isMobile || !webgl) tier = "low";
       else if (isTablet) tier = "mid";
 
-      setDevice({ reducedMotion, finePointer, isMobile, webgl, tier });
+      setDevice({ reducedMotion, finePointer, isMobile, webgl, tier, resolved: true });
     };
 
     resolve();

@@ -140,9 +140,12 @@ export default function Stage({ ready }: { ready: boolean }) {
 
       const mm = gsap.matchMedia();
 
-      /* ── DESKTOP: one pinned frame, scroll racks scene → scene ─────────── */
+      /* ── CINEMATIC (ALL WIDTHS): one pinned frame, scroll racks scene →
+            scene. The pinned focus-pull experience now runs on phones, tablets
+            and every desktop size — only the layout geometry adapts per
+            breakpoint (CSS). Reduced-motion is the sole fallback. ───────────── */
       mm.add(
-        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        "(prefers-reduced-motion: no-preference)",
         () => {
           frame.current?.classList.remove("is-flow");
 
@@ -211,9 +214,20 @@ export default function Stage({ ready }: { ready: boolean }) {
           // stays there. (It used to fly back in big on Connect, which collided
           // with the contact list and clipped the final "R".)
           if (nameEl) {
+            // Tuck the wordmark into the top-left corner as the tiny logo. The
+            // shrink target is viewport-relative: on phones the name is smaller,
+            // so it needs a smaller corner inset (and a slightly larger scale to
+            // stay legible) than on a wide desktop. Recomputed on refresh.
+            const phone = () => window.innerWidth < 640;
             tl.to(
               nameEl,
-              { scale: 0.16, x: () => -(window.innerWidth / 2) + 130, y: () => -(window.innerHeight / 2) + 56, duration: TDUR, ease: "rack" },
+              {
+                scale: () => (phone() ? 0.22 : 0.16),
+                x: () => -(window.innerWidth / 2) + (phone() ? 74 : 130),
+                y: () => -(window.innerHeight / 2) + (phone() ? 40 : 56),
+                duration: TDUR,
+                ease: "rack",
+              },
               firstAt
             );
           }
@@ -235,10 +249,12 @@ export default function Stage({ ready }: { ready: boolean }) {
         }
       );
 
-      /* ── MOBILE / REDUCED MOTION: vertical flow, quiet reveals ─────────── */
-      mm.add("(max-width: 1023px), (prefers-reduced-motion: reduce)", () => {
+      /* ── REDUCED MOTION: vertical flow, no pin, everything static & visible
+            (accessibility). Scenes flow top-to-bottom via the .is-flow CSS; the
+            data-reveal / data-fade elements keep their default (visible) state
+            since we never apply the blurred initial set here. ───────────────── */
+      mm.add("(prefers-reduced-motion: reduce)", () => {
         frame.current?.classList.add("is-flow");
-        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
         const prog = ScrollTrigger.create({
           trigger: document.body,
@@ -246,49 +262,11 @@ export default function Stage({ ready }: { ready: boolean }) {
           end: "bottom bottom",
           onUpdate: (self) => (stage.progress = self.progress),
         });
-        // Ayan as a faint persistent backdrop on mobile (text stays readable).
+        // Ayan as a faint persistent backdrop (text stays readable).
         if (portraitEl) {
-          gsap.set(portraitEl, { autoAlpha: 0, scale: 1.05, filter: "blur(16px)" });
-          gsap.to(portraitEl, {
-            autoAlpha: reduced ? 0.42 : 0.5,
-            scale: 1,
-            filter: "blur(0px)",
-            ease: "none",
-            scrollTrigger: { trigger: scenes[0], start: "top top", end: "bottom top", scrub: true },
-          });
+          gsap.set(portraitEl, { autoAlpha: 0.42, scale: 1, filter: "blur(0px)" });
         }
 
-        if (reduced) return () => prog.kill();
-
-        if (nameEl)
-          gsap.to(nameEl, {
-            scale: 0.6,
-            autoAlpha: 0,
-            ease: "none",
-            scrollTrigger: { trigger: scenes[0], start: "top top", end: "bottom top", scrub: true },
-          });
-
-        scenes.forEach((s, i) => {
-          const key = ORDER[i];
-          const v = REVEAL[key] ?? REVEAL.about;
-          setInitial(s, key);
-          const r = s.querySelectorAll("[data-reveal]");
-          if (r.length)
-            gsap.to(r, {
-              ...v.toR,
-              duration: v.durR * 1.1,
-              stagger: v.stagR,
-              scrollTrigger: { trigger: s, start: "top 80%" },
-            });
-          const f = s.querySelectorAll("[data-fade]");
-          if (f.length)
-            gsap.to(f, {
-              ...v.toF,
-              duration: v.durF * 1.05,
-              stagger: v.stagF,
-              scrollTrigger: { trigger: s, start: "top 74%" },
-            });
-        });
         return () => prog.kill();
       });
 

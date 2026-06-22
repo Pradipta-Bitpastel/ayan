@@ -165,6 +165,15 @@ export default function WordMarkParticles({ tier }: { tier: "high" | "mid" | "lo
     if (!u) return;
     u.uTime.value = state.clock.elapsedTime;
 
+    // Fit the ~8.2-unit-wide wordmark to the viewport so it never clips on narrow
+    // or portrait screens (tablets, small desktop windows). Scaling the points
+    // group is transparent to the cursor-light math, which works in local space.
+    if (pts.current) {
+      const target = Math.max(0.34, Math.min(1, (state.viewport.width * 0.86) / 8.2));
+      const s = damp(pts.current.scale.x, target, 4, dt);
+      pts.current.scale.setScalar(s);
+    }
+
     sm.current = damp(sm.current, stage.focus, 3.5, dt);
     const reveal = 1 - sm.current; // assembles as the loader resolves focus
     const scrollOut = mapClamp(stage.progress, 0.0, 0.1, 1, 0);
